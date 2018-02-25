@@ -206,13 +206,25 @@ int	main(int argc,char * argv[])
 		u32 rv = 0;
 		u32	mask = 0;
 		int offset = 0;
+		int cnt = 0;
+
 		value = rand();
-		mask = GenMask(rand()%33);
 		offset = rand()%(sizeof(test_bits_buf)*8);
+		cnt = sizeof(test_bits_buf)*8 - offset;
+		if(cnt > 33)
+			cnt = 33;
+		mask = GenMask(rand()%cnt);
 		wv = value & mask;
-		SetBits_LE32(test_bits_buf,sizeof(test_bits_buf),offset,mask,wv);
-		rv = GetBits_LE32(test_bits_buf,sizeof(test_bits_be),offset,mask);
-		printf("value==0x%8.8x\toffset==%d\tmask==0x%8.8x\twv==0x%8.8x\trv==0x%8.8x\n",value,offset,mask,wv,rv);
+		SetBits_LE32(test_bits_le,sizeof(test_bits_le),offset,mask,wv);
+		rv = GetBits_LE32(test_bits_le,sizeof(test_bits_le),offset,mask);
+		printf("le: value==0x%8.8x\toffset==%d\tmask==0x%8.8x\twv==0x%8.8x\trv==0x%8.8x\n",value,offset,mask,wv,rv);
+		if(rv != wv)
+			printf("ERROR!\n");
+		SetBits_BE32(test_bits_be,sizeof(test_bits_be),offset,mask,wv);
+		rv = GetBits_BE32(test_bits_be,sizeof(test_bits_be),offset,mask);
+		printf("be: value==0x%8.8x\toffset==%d\tmask==0x%8.8x\twv==0x%8.8x\trv==0x%8.8x\n",value,offset,mask,wv,rv);
+		if(rv != wv)
+			printf("ERROR!\n");
 	}
 	return	0;
 }
