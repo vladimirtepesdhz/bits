@@ -6,6 +6,11 @@
 typedef	unsigned char	u8;
 typedef	unsigned short	u16;
 typedef	unsigned int	u32;
+typedef	enum _bool_t
+{
+	t_false
+	,t_true
+}bool_t;
 
 //#define	GEN_MASK(n)	((((u32)1)<<(n))-1)
 u32	GenMask(int n)
@@ -129,6 +134,7 @@ void	SetBits_LE32(u8 * pdata,int data_size,int offset,u32 bits_mask,u32 value)
 	}
 }
 
+
 void	SetBits_BE32(u8 * pdata,int data_size,int offset,u32 bits_mask,u32 value)
 {
 	int byte_offset = 0;
@@ -174,11 +180,128 @@ void	SetBits_BE32(u8 * pdata,int data_size,int offset,u32 bits_mask,u32 value)
 	}
 }
 
+void	ShiftLeft_LE(u8 * pdata,int data_size,int shift,bool_t rotate)
+{
+	int byte_cnt = 0;
+	int bit_rem = 0;
+	int iter = 0;
+	u8 * p_buf = 0;
+	u8 mask = 0;
+	u8 ovf = 0;
+	u8 so = 0;
+
+	if(!pdata)
+		return;
+	if(data_size <= 0)
+		return;
+	if(shift <= 0)
+		return;
+	byte_cnt = shift / 8;
+	byte_cnt %= data_size;
+	bit_rem = shift & 0x07;
+
+	if(byte_cnt)	//字节位移
+	{
+		if(rotate)
+		{
+			p_buf = (u8 *)malloc(byte_cnt);
+			memcpy(p_buf,&pdata[data_size - byte_cnt],byte_cnt);
+		}
+		for(iter=data_size - 1; iter >= byte_cnt; --iter)
+		{
+			pdata[iter] = pdata[iter - byte_cnt];
+		}
+		if(rotate)
+		{
+			memcpy(&pdata[0],p_buf,byte_cnt);
+			free(p_buf);
+		}
+	}
+	if(bit_rem)	//比特位移
+	{
+		mask = (GenMask(bit_rem) << (8-bit_rem));
+		if(rotate)
+		{
+			so = (pdata[data_size - 1] & mask) >> (8-bit_rem);
+		}
+		for(iter=data_size-1;iter>0;--iter)
+		{
+			pdata[iter] <<= bit_rem;
+			ovf = ((pdata[iter-1] & mask) >> (8-bit_rem));
+			pdata[iter] |= ovf;
+		}
+		pdata[0] <<= bit_rem;
+		if(rotate)
+		{
+			pdata[0] |= so;
+		}
+	}
+}
+
+void	ShiftRight_LE(u8 *pdata,int data_size,int shift,bool_t rotate)
+{
+	int byte_cnt = 0;
+	int bit_rem = 0;
+	int iter = 0;
+	u8 * p_buf = 0;
+	u8 mask = 0;
+	u8 ovf = 0;
+	u8 so = 0;
+
+	if(!pdata)
+		return;
+	if(data_size <= 0)
+		return;
+	if(shift <= 0)
+		return;
+	byte_cnt = shift / 8;
+	byte_cnt %= data_size;
+	bit_rem = shift & 0x07;
+
+	if(byte_cnt)	//字节位移
+	{
+		if(rotate)
+		{
+			p_buf = (u8 *)malloc(byte_cnt);
+			memcpy(p_buf,&pdata[0],byte_cnt);
+		}
+		for(iter=0;iter< data_size - byte_cnt;++iter)
+		{
+			pdata[iter] = pdata[iter + byte_cnt];
+		}
+		if(rotate)
+		{
+			memcpy(&pdata[data_size - byte_cnt],p_buf,byte_cnt);
+			free(p_buf);
+		}
+	}
+	if(bit_rem)	//比特位移
+	{
+		mask = GenMask(bit_rem);
+		if(rotate)
+		{
+			so = (pdata[0] & mask) << (8 - bit_rem);
+		}
+		for(iter=0;iter<data_size-1;++iter)
+		{
+			pdata[iter] >>= bit_rem;
+			ovf = ((pdata[iter+1] & mask) << (8-bit_rem));
+			pdata[iter] |= ovf;
+		}
+		pdata[data_size - 1] >>= bit_rem;
+		if(rotate)
+		{
+			pdata[data_size - 1] |= so;
+		}
+	}
+}
+
+
+u8	test_bits_be[] = {0x12,0x34,0x56,0x78,0x9A,0xBC,0xDE,0xF0};
+u8	test_bits_le[] = {0xF0,0xDE,0xBC,0x9A,0x78,0x56,0x34,0x12};
+u8	test_bits_buf[8];
 int	main(int argc,char * argv[])
 {
-	u8	test_bits_be[] = {0x12,0x34,0x56,0x78,0x9A,0xBC,0xDE,0xF0};
-	u8	test_bits_le[] = {0xF0,0xDE,0xBC,0x9A,0x78,0x56,0x34,0x12};
-	u8	test_bits_buf[8];
 #if 0
 	for(int iter=0;iter<sizeof(test_bits_le)*8;++iter)
 	{
@@ -198,6 +321,8 @@ int	main(int argc,char * argv[])
 		printf("}\n");
 	}
 #endif
+
+#if 0
 	srand(time(NULL));
 	for(int iter=0;iter<100;++iter)
 	{
@@ -226,5 +351,32 @@ int	main(int argc,char * argv[])
 		if(rv != wv)
 			printf("ERROR!\n");
 	}
+#endif
+
+	for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
+	{
+		memcpy(test_bits_buf,test_bits_le,sizeof(test_bits_buf));
+		ShiftLeft_LE(test_bits_buf,sizeof(test_bits_buf),offset,t_true);
+		printf("le shift left %d:\ttest_bits_buf[]={",offset);
+		for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+		{
+			printf("0x%2.2x,",test_bits_buf[iter]);
+		}
+		printf("}\n");
+	}
+	printf("\n");
+	for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
+	{
+		memcpy(test_bits_buf,test_bits_le,sizeof(test_bits_buf));
+		ShiftRight_LE(test_bits_buf,sizeof(test_bits_buf),offset,t_true);
+		printf("le shift right %d:\ttest_bits_buf[]={",offset);
+		for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+		{
+			printf("0x%2.2x,",test_bits_buf[iter]);
+		}
+		printf("}\n");
+	}
+	printf("\n");
+
 	return	0;
 }
