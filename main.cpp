@@ -197,6 +197,11 @@ void	ShiftLeft_LE(u8 * pdata,int data_size,int shift,bool_t rotate)
 	if(shift <= 0)
 		return;
 	byte_cnt = shift / 8;
+	if(t_false == rotate && byte_cnt >= data_size)
+	{
+		memset(pdata,0x00,data_size);
+		return;
+	}
 	byte_cnt %= data_size;
 	bit_rem = shift & 0x07;
 
@@ -215,6 +220,10 @@ void	ShiftLeft_LE(u8 * pdata,int data_size,int shift,bool_t rotate)
 		{
 			memcpy(&pdata[0],p_buf,byte_cnt);
 			free(p_buf);
+		}
+		else
+		{
+			memset(&pdata[0],0x00,byte_cnt);
 		}
 	}
 	if(bit_rem)	//比特位移
@@ -255,6 +264,11 @@ void	ShiftRight_LE(u8 *pdata,int data_size,int shift,bool_t rotate)
 	if(shift <= 0)
 		return;
 	byte_cnt = shift / 8;
+	if(t_false == rotate && byte_cnt >= data_size)
+	{
+		memset(pdata,0x00,data_size);
+		return;
+	}
 	byte_cnt %= data_size;
 	bit_rem = shift & 0x07;
 
@@ -273,6 +287,10 @@ void	ShiftRight_LE(u8 *pdata,int data_size,int shift,bool_t rotate)
 		{
 			memcpy(&pdata[data_size - byte_cnt],p_buf,byte_cnt);
 			free(p_buf);
+		}
+		else
+		{
+			memset(&pdata[data_size - byte_cnt],0x00,byte_cnt);
 		}
 	}
 	if(bit_rem)	//比特位移
@@ -313,6 +331,11 @@ void	ShiftLeft_BE(u8 * pdata,int data_size,int shift,bool_t rotate)
 	if(shift <= 0)
 		return;
 	byte_cnt = shift / 8;
+	if(t_false == rotate && byte_cnt >= data_size)
+	{
+		memset(pdata,0x00,data_size);
+		return;
+	}
 	byte_cnt %= data_size;
 	bit_rem = shift & 0x07;
 
@@ -331,6 +354,10 @@ void	ShiftLeft_BE(u8 * pdata,int data_size,int shift,bool_t rotate)
 		{
 			memcpy(&pdata[data_size - byte_cnt],p_buf,byte_cnt);
 			free(p_buf);
+		}
+		else
+		{
+			memset(&pdata[data_size - byte_cnt],0x00,byte_cnt);
 		}
 	}
 	if(bit_rem)	//比特位移
@@ -370,7 +397,14 @@ void	ShiftRight_BE(u8 * pdata,int data_size,int shift,bool_t rotate)
 		return;
 	if(shift <= 0)
 		return;
+
 	byte_cnt = shift / 8;
+	if(t_false == rotate && byte_cnt >= data_size)
+	{
+		memset(pdata,0x00,data_size);
+		return;
+	}
+
 	byte_cnt %= data_size;
 	bit_rem = shift & 0x07;
 
@@ -390,6 +424,10 @@ void	ShiftRight_BE(u8 * pdata,int data_size,int shift,bool_t rotate)
 			memcpy(&pdata[0],p_buf,byte_cnt);
 			free(p_buf);
 		}
+		else
+		{
+			memset(&pdata[0],0x00,byte_cnt);
+		}
 	}
 	if(bit_rem)	//比特位移
 	{
@@ -408,6 +446,40 @@ void	ShiftRight_BE(u8 * pdata,int data_size,int shift,bool_t rotate)
 		if(rotate)
 		{
 			pdata[0] |= so;
+		}
+	}
+}
+
+void OutputBinaryByte(u8 v)
+{
+	u8 mask = 0x80;
+	while(mask)
+	{
+		if(mask & v)
+			printf("1");
+		else
+			printf("0");
+		mask >>= 1;
+	}
+}
+
+void OutputBinaryData(u8 * pdata,int data_size,bool_t le)
+{
+	int iter = 0;
+	if(le)
+	{
+		for(iter=data_size-1;iter>=0;--iter)
+		{
+			OutputBinaryByte(pdata[iter]);
+			printf(" ");
+		}
+	}
+	else
+	{
+		for(iter=0;iter<data_size;++iter)
+		{
+			OutputBinaryByte(pdata[iter]);
+			printf(" ");
 		}
 	}
 }
@@ -468,54 +540,71 @@ int	main(int argc,char * argv[])
 	}
 #endif
 
-	for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
+	for(int rotate = (int)t_false;rotate <= (int)t_true ; ++rotate)
 	{
-		memcpy(test_bits_buf,test_bits_le,sizeof(test_bits_buf));
-		ShiftLeft_LE(test_bits_buf,sizeof(test_bits_buf),offset,t_true);
-		printf("le shift left %d:\ttest_bits_buf[]={",offset);
-		for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+		for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
 		{
-			printf("0x%2.2x,",test_bits_buf[iter]);
+			memcpy(test_bits_buf,test_bits_le,sizeof(test_bits_buf));
+			ShiftLeft_LE(test_bits_buf,sizeof(test_bits_buf),offset,(bool_t)rotate);
+			printf("le %s left %d:\ttest_bits_buf[]={",rotate?"rotate":"shift",offset);
+			//for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+			for(int iter=sizeof(test_bits_buf)-1;iter>=0;--iter)
+			{
+				printf("0x%2.2x,",test_bits_buf[iter]);
+			}
+			//printf("}\n");
+			printf("\t");
+			OutputBinaryData(test_bits_buf,sizeof(test_bits_buf),t_true);
+			printf("\n");
 		}
-		printf("}\n");
-	}
-	printf("\n");
-	for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
-	{
-		memcpy(test_bits_buf,test_bits_le,sizeof(test_bits_buf));
-		ShiftRight_LE(test_bits_buf,sizeof(test_bits_buf),offset,t_true);
-		printf("le shift right %d:\ttest_bits_buf[]={",offset);
-		for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+		printf("\n");
+		for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
 		{
-			printf("0x%2.2x,",test_bits_buf[iter]);
+			memcpy(test_bits_buf,test_bits_le,sizeof(test_bits_buf));
+			ShiftRight_LE(test_bits_buf,sizeof(test_bits_buf),offset,(bool_t)rotate);
+			printf("le %s right %d:\ttest_bits_buf[]={",rotate?"rotate":"shift",offset);
+			//for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+			for(int iter=sizeof(test_bits_buf)-1;iter>=0;--iter)
+			{
+				printf("0x%2.2x,",test_bits_buf[iter]);
+			}
+			//printf("}\n");
+			printf("\t");
+			OutputBinaryData(test_bits_buf,sizeof(test_bits_buf),t_true);
+			printf("\n");
 		}
-		printf("}\n");
-	}
-	printf("\n");
-
-	for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
-	{
-		memcpy(test_bits_buf,test_bits_be,sizeof(test_bits_buf));
-		ShiftLeft_BE(test_bits_buf,sizeof(test_bits_buf),offset,t_true);
-		printf("be shift left %d:\ttest_bits_buf[]={",offset);
-		for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+		printf("\n");
+	
+		for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
 		{
-			printf("0x%2.2x,",test_bits_buf[iter]);
+			memcpy(test_bits_buf,test_bits_be,sizeof(test_bits_buf));
+			ShiftLeft_BE(test_bits_buf,sizeof(test_bits_buf),offset,(bool_t)rotate);
+			printf("be %s left %d:\ttest_bits_buf[]={",rotate?"rotate":"shift",offset);
+			for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+			{
+				printf("0x%2.2x,",test_bits_buf[iter]);
+			}
+			//printf("}\n");
+			printf("\t");
+			OutputBinaryData(test_bits_buf,sizeof(test_bits_buf),t_false);
+			printf("\n");
 		}
-		printf("}\n");
-	}
-	printf("\n");
-	for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
-	{
-		memcpy(test_bits_buf,test_bits_be,sizeof(test_bits_buf));
-		ShiftRight_BE(test_bits_buf,sizeof(test_bits_buf),offset,t_true);
-		printf("be shift right %d:\ttest_bits_buf[]={",offset);
-		for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+		printf("\n");
+		for(int offset=0;offset<= sizeof(test_bits_buf)*8;++offset)
 		{
-			printf("0x%2.2x,",test_bits_buf[iter]);
+			memcpy(test_bits_buf,test_bits_be,sizeof(test_bits_buf));
+			ShiftRight_BE(test_bits_buf,sizeof(test_bits_buf),offset,(bool_t)rotate);
+			printf("be %s right %d:\ttest_bits_buf[]={",rotate?"rotate":"shift",offset);
+			for(int iter=0;iter<sizeof(test_bits_buf);++iter)
+			{
+				printf("0x%2.2x,",test_bits_buf[iter]);
+			}
+			//printf("}\n");
+			printf("\t");
+			OutputBinaryData(test_bits_buf,sizeof(test_bits_buf),t_false);
+			printf("\n");
 		}
-		printf("}\n");
+		printf("\n");
 	}
-	printf("\n");
 	return	0;
 }
